@@ -1,6 +1,6 @@
 require("dotenv").config();
-const { createClient } = require("redis");
-const redis = createClient(process.env.REDIS_URL);
+const { createClient } = require("ioredis");
+const redis = new createClient(process.env.REDIS_URL);
 
 redis.on("error", (err) => console.log("redis error : ", err));
 redis.on(
