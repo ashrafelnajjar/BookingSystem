@@ -1,5 +1,5 @@
 const rateLimit = require("express-rate-limit");
-const { RedisStore } = require("rate-limit-redis");
+const RedisStore  = require("rate-limit-redis");
 const redis = require("../config/redis");
 
 const rateLimiter = ({
@@ -16,7 +16,7 @@ const rateLimiter = ({
     message: { message: "Too many requests, حاول تاني بعد شوية" },
     passOnStoreError: true,
     store: new RedisStore({
-      sendCommand: (...args) => redis.sendCommand(args),
+      client : redis,
       prefix,
     }),
     ...options,
