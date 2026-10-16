@@ -1,5 +1,5 @@
 const rateLimit = require("express-rate-limit");
-const RedisStore  = require("rate-limit-redis");
+const { RedisStore } = require("rate-limit-redis");
 const redis = require("../config/redis");
 
 const rateLimiter = ({
@@ -9,14 +9,14 @@ const rateLimiter = ({
   ...options
 } = {}) =>
   rateLimit({
-    windowMs, 
-    limit, 
-    standardHeaders: "draft-7", 
-    legacyHeaders: false, 
+    windowMs,
+    limit,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
     message: { message: "Too many requests, حاول تاني بعد شوية" },
     passOnStoreError: true,
     store: new RedisStore({
-      client : redis,
+      sendCommand: (...args) => redis.call(...args),
       prefix,
     }),
     ...options,
