@@ -119,10 +119,10 @@ const createBooking = async (req, res) => {
     date,
     startTime,
     paymentMethod,
-    status: paymentMethod === "on_site" ? "confirmed" : "pending",
+    status: paymentMethod === "onsite" ? "confirmed" : "pending",
   });
  
-  if (paymentMethod === "on_site") {
+  if (paymentMethod === "onsite") {
     return res
       .status(201)
       .json({ status: "success", data: { booking: newBooking } });
