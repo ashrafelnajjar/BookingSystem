@@ -188,7 +188,7 @@ const updateBooking = async (req, res) => {
   Object.keys(changes).forEach((k) => changes[k] === undefined && delete changes[k]);
  
   const updated = await booking.findByIdAndUpdate(req.params.id, changes, {
-    new: true,
+    returnDocument : "after",
     runValidators: true,
   });
  
