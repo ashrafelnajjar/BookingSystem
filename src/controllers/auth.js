@@ -1,7 +1,7 @@
 const User = require("../models/user");
 const AppError = require("../utils/AppError");
 const bcrypt = require("bcrypt");
-const util = require("util"); 
+const util = require("util");
 const JWT = require("jsonwebtoken");
 const jwtSginPromise = util.promisify(JWT.sign);
 const sendEmail = require("../utils/sendEmail");
@@ -19,14 +19,13 @@ const login = async (req, res, next) => {
   const user = await User.findOne({ email: body.email }).populate("password");
   if (!user) throw new AppError(" email or password is incorrect!", 400);
 
-  const iscorrectpassword =await bcrypt.compare(body.password,user.password);
+  const iscorrectpassword = await bcrypt.compare(body.password, user.password);
   if (!iscorrectpassword)
     throw new AppError("email or password is incorrect!", 400);
   const token = await jwtSginPromise({ sub: user.id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
-  res.status(200).json({ message: "success",token, user });
-
+  res.status(200).json({ message: "success", token, user });
 };
 
 const forgotPassword = async (req, res) => {
@@ -35,7 +34,7 @@ const forgotPassword = async (req, res) => {
   if (!user) throw new AppError("email is not found", 404);
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
-  const resetURL = `http://localhost:3000/reset-password/${resetToken}`;
+  const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
   const message = `
       <div style="direction: rtl; text-align: right; font-family: Arial;">
         <h2>طلب إعادة تعيين كلمة السر</h2>

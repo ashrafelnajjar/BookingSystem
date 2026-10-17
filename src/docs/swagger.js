@@ -1,52 +1,142 @@
+// src/docs/swagger.js
+// OpenAPI 3 specification. The /api-docs page is generated from this file.
+
 const errorResponse = (description) => ({
   description,
   content: {
     "application/json": { schema: { $ref: "#/components/schemas/Error" } },
   },
 });
- 
+
 const idParam = {
   name: "id",
   in: "path",
   required: true,
-  description: "رقم الحجز (24 حرف)",
+  description: "Booking id (24-character ObjectId)",
   schema: { type: "string", example: "65f1c2a9e4b0a1d2c3e4f567" },
 };
- 
+
+const tokenParam = {
+  name: "token",
+  in: "path",
+  required: true,
+  description: "Password reset token received by email",
+  schema: { type: "string" },
+};
+
 const secured = [{ bearerAuth: [] }];
- 
+
+const jsonBody = (schemaRef) => ({
+  required: true,
+  content: { "application/json": { schema: { $ref: schemaRef } } },
+});
+
 const swaggerSpec = {
   openapi: "3.0.3",
   info: {
     title: "Booking System API",
     version: "1.0.0",
     description:
-      "API لحجز المواعيد: حجز بمواعيد بالساعة، دفع أونلاين عن طريق Paymob أو الدفع في المكان.\n\n" +
-      "لتجربة الـ endpoints المقفولة اضغط **Authorize** وحط الـ token اللي رجع من تسجيل الدخول.",
+      "REST API for booking hourly appointments. Customers can pay online through Paymob or pay on site.\n\n" +
+      "**Online bookings** are held as `pending` and return a payment link that is valid for 10 minutes. " +
+      "If the payment is not completed in time, the slot is released automatically.\n\n" +
+      "To try the protected endpoints, log in, copy the returned token, click **Authorize** and paste it.",
   },
   servers: [{ url: process.env.APP_URL || "http://localhost:5000" }],
   tags: [
-    { name: "Bookings", description: "إدارة الحجوزات" },
-    { name: "Payments", description: "الدفع (Paymob)" },
+    { name: "Auth", description: "Authentication and password reset" },
+    { name: "Bookings", description: "Booking management" },
+    { name: "Payments", description: "Online payments (Paymob)" },
   ],
- 
+
   paths: {
+    // ---------------------------------------------------------------- Auth
+    "/api/v1/auth/signup": {
+      post: {
+        tags: ["Auth"],
+        summary: "Create an account",
+        requestBody: jsonBody("#/components/schemas/Signup"),
+        responses: {
+          201: { description: "Account created" },
+          400: errorResponse("Invalid data"),
+          409: errorResponse("Email already registered"),
+        },
+      },
+    },
+
+    "/api/v1/auth/login": {
+      post: {
+        tags: ["Auth"],
+        summary: "Log in",
+        description: "Returns a JWT. Use it with the **Authorize** button.",
+        requestBody: jsonBody("#/components/schemas/Login"),
+        responses: {
+          200: {
+            description: "Logged in",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message: { type: "string", example: "success" },
+                    token: { type: "string" },
+                    user: { type: "object" },
+                  },
+                },
+              },
+            },
+          },
+          401: errorResponse("Wrong email or password"),
+        },
+      },
+    },
+
+    "/api/v1/auth/forgot-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Request a password reset email",
+        description:
+          "Sends an email containing a reset link that is valid for 10 minutes. " +
+          "The link points to `FRONTEND_URL/reset-password/:token`; the frontend then calls the reset endpoint below.",
+        requestBody: jsonBody("#/components/schemas/ForgotPassword"),
+        responses: {
+          200: { description: "Reset email sent" },
+          404: errorResponse("Email not found"),
+        },
+      },
+    },
+
+    "/api/v1/auth/reset-password/{token}": {
+      patch: {
+        tags: ["Auth"],
+        summary: "Set a new password using the emailed token",
+        parameters: [tokenParam],
+        requestBody: jsonBody("#/components/schemas/ResetPassword"),
+        responses: {
+          200: { description: "Password updated" },
+          400: errorResponse("Token is invalid or has expired"),
+        },
+      },
+    },
+
+    // ------------------------------------------------------------ Bookings
     "/api/v1/bookings/available-slots": {
       get: {
         tags: ["Bookings"],
-        summary: "المواعيد المتاحة في يوم معين",
+        summary: "List the free slots for a date",
         parameters: [
           {
             name: "date",
             in: "query",
             required: true,
-            description: "التاريخ بصيغة YYYY-MM-DD (لازم يوم بعد النهارده على الأقل)",
+            description:
+              "Date in YYYY-MM-DD format. Must be at least one day after today.",
             schema: { type: "string", example: "2026-10-25" },
           },
         ],
         responses: {
           200: {
-            description: "قايمة المواعيد الفاضية",
+            description: "Free slots",
             content: {
               "application/json": {
                 schema: {
@@ -69,17 +159,17 @@ const swaggerSpec = {
               },
             },
           },
-          400: errorResponse("تاريخ غلط، أو يوم إجازة، أو النهارده/فات"),
+          400: errorResponse("Invalid date, a non-working day, or today/past"),
         },
       },
     },
- 
+
     "/api/v1/bookings": {
       get: {
         tags: ["Bookings"],
-        summary: "عرض الحجوزات",
+        summary: "List bookings",
         description:
-          "المستخدم العادي بيشوف حجوزاته بس، والأدمن بيشوف كل الحجوزات.",
+          "Regular users see their own bookings. Admins see all bookings.",
         security: secured,
         parameters: [
           {
@@ -109,7 +199,7 @@ const swaggerSpec = {
         ],
         responses: {
           200: {
-            description: "قايمة الحجوزات",
+            description: "Paginated list of bookings",
             content: {
               "application/json": {
                 schema: {
@@ -134,27 +224,21 @@ const swaggerSpec = {
               },
             },
           },
-          401: errorResponse("مش مسجّل دخول"),
+          401: errorResponse("Not logged in"),
         },
       },
- 
+
       post: {
         tags: ["Bookings"],
-        summary: "إنشاء حجز جديد",
+        summary: "Create a booking",
         description:
-          "`on_site`: الحجز بيتأكد على طول. `online`: الحجز بيبقى pending ويرجّع لينك دفع صالح 10 دقايق.",
+          "`on_site`: the booking is confirmed immediately. " +
+          "`online`: the booking is `pending` and a payment link valid for 10 minutes is returned.",
         security: secured,
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/CreateBooking" },
-            },
-          },
-        },
+        requestBody: jsonBody("#/components/schemas/CreateBooking"),
         responses: {
           201: {
-            description: "اتعمل الحجز",
+            description: "Booking created",
             content: {
               "application/json": {
                 schema: {
@@ -167,12 +251,12 @@ const swaggerSpec = {
                         booking: { $ref: "#/components/schemas/Booking" },
                         paymentUrl: {
                           type: "string",
-                          description: "للحجز الأونلاين بس",
+                          description: "Online bookings only",
                         },
                         expiresAt: {
                           type: "string",
                           format: "date-time",
-                          description: "للحجز الأونلاين بس",
+                          description: "Online bookings only",
                         },
                       },
                     },
@@ -181,23 +265,23 @@ const swaggerSpec = {
               },
             },
           },
-          400: errorResponse("بيانات غلط أو خارج مواعيد العمل"),
-          401: errorResponse("مش مسجّل دخول"),
-          409: errorResponse("الميعاد محجوز بالفعل"),
-          502: errorResponse("فشل إنشاء لينك الدفع"),
+          400: errorResponse("Invalid data or outside working hours"),
+          401: errorResponse("Not logged in"),
+          409: errorResponse("This appointment is already booked"),
+          502: errorResponse("Could not create the payment link"),
         },
       },
     },
- 
+
     "/api/v1/bookings/{id}": {
       get: {
         tags: ["Bookings"],
-        summary: "عرض حجز واحد",
+        summary: "Get a single booking",
         security: secured,
         parameters: [idParam],
         responses: {
           200: {
-            description: "الحجز",
+            description: "The booking",
             content: {
               "application/json": {
                 schema: {
@@ -215,61 +299,57 @@ const swaggerSpec = {
               },
             },
           },
-          401: errorResponse("مش مسجّل دخول"),
-          403: errorResponse("الحجز مش بتاعك"),
-          404: errorResponse("مفيش حجز بالرقم ده"),
+          401: errorResponse("Not logged in"),
+          403: errorResponse("This booking belongs to another user"),
+          404: errorResponse("Booking not found"),
         },
       },
- 
+
       patch: {
         tags: ["Bookings"],
-        summary: "تعديل حجز",
+        summary: "Update a booking",
         description:
-          "بيتعدل الاسم والتليفون والوصف والتاريخ والساعة. الحجز الملغي أو المنتهي مينفعش يتعدل.",
+          "Name, phone, description, date and start time can be changed. " +
+          "Cancelled or finished bookings cannot be updated.",
         security: secured,
         parameters: [idParam],
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/UpdateBooking" },
-            },
-          },
-        },
+        requestBody: jsonBody("#/components/schemas/UpdateBooking"),
         responses: {
-          200: { description: "اتعدل الحجز" },
-          400: errorResponse("بيانات غلط أو الحجز ملغي/منتهي"),
-          401: errorResponse("مش مسجّل دخول"),
-          403: errorResponse("الحجز مش بتاعك"),
-          404: errorResponse("مفيش حجز بالرقم ده"),
-          409: errorResponse("الميعاد الجديد محجوز"),
+          200: { description: "Booking updated" },
+          400: errorResponse("Invalid data, or the booking is cancelled/finished"),
+          401: errorResponse("Not logged in"),
+          403: errorResponse("This booking belongs to another user"),
+          404: errorResponse("Booking not found"),
+          409: errorResponse("The new appointment is already booked"),
         },
       },
     },
- 
+
     "/api/v1/bookings/{id}/cancel": {
       patch: {
         tags: ["Bookings"],
-        summary: "إلغاء حجز",
-        description: "الحجز المدفوع مينفعش يتلغى.",
+        summary: "Cancel a booking",
+        description: "A paid booking cannot be cancelled.",
         security: secured,
         parameters: [idParam],
         responses: {
-          200: { description: "اتلغى الحجز" },
-          400: errorResponse("الحجز ملغي بالفعل أو مدفوع أو منتهي"),
-          401: errorResponse("مش مسجّل دخول"),
-          403: errorResponse("الحجز مش بتاعك"),
-          404: errorResponse("مفيش حجز بالرقم ده"),
+          200: { description: "Booking cancelled" },
+          400: errorResponse("Already cancelled, finished, or paid"),
+          401: errorResponse("Not logged in"),
+          403: errorResponse("This booking belongs to another user"),
+          404: errorResponse("Booking not found"),
         },
       },
     },
- 
+
+    // ------------------------------------------------------------ Payments
     "/api/v1/payments/webhook": {
       post: {
         tags: ["Payments"],
-        summary: "Webhook بتاع Paymob (مش للاستخدام اليدوي)",
+        summary: "Paymob webhook (not for manual use)",
         description:
-          "Paymob هي اللي بتنادي الـ endpoint ده بعد الدفع. الطلب لازم يحمل `hmac` صحيح في الـ query، وإلا بيترفض بـ 401.",
+          "Called by Paymob after a payment attempt. The request must carry a valid `hmac` " +
+          "query parameter, otherwise it is rejected with 401.",
         parameters: [
           {
             name: "hmac",
@@ -279,13 +359,13 @@ const swaggerSpec = {
           },
         ],
         responses: {
-          200: { description: "تم الاستلام" },
-          401: errorResponse("توقيع HMAC غلط"),
+          200: { description: "Received" },
+          401: errorResponse("Invalid HMAC signature"),
         },
       },
     },
   },
- 
+
   components: {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
@@ -295,7 +375,41 @@ const swaggerSpec = {
         type: "object",
         properties: {
           status: { type: "string", example: "fail" },
-          message: { type: "string", example: "this appointment is already booked" },
+          message: {
+            type: "string",
+            example: "this appointment is already booked",
+          },
+        },
+      },
+      Signup: {
+        type: "object",
+        required: ["name", "email", "password"],
+        properties: {
+          name: { type: "string", example: "Ahmed Ali" },
+          email: { type: "string", example: "ahmed@example.com" },
+          password: { type: "string", example: "StrongPass123" },
+        },
+      },
+      Login: {
+        type: "object",
+        required: ["email", "password"],
+        properties: {
+          email: { type: "string", example: "ahmed@example.com" },
+          password: { type: "string", example: "StrongPass123" },
+        },
+      },
+      ForgotPassword: {
+        type: "object",
+        required: ["email"],
+        properties: {
+          email: { type: "string", example: "ahmed@example.com" },
+        },
+      },
+      ResetPassword: {
+        type: "object",
+        required: ["password"],
+        properties: {
+          password: { type: "string", example: "NewStrongPass123" },
         },
       },
       Booking: {
@@ -305,14 +419,14 @@ const swaggerSpec = {
           user: { type: "string" },
           name: { type: "string", example: "Ahmed Ali" },
           phone: { type: "string", example: "01012345678" },
-          description: { type: "string", example: "كشف جديد" },
+          description: { type: "string", example: "First visit" },
           date: { type: "string", example: "2026-10-25" },
           startTime: { type: "string", example: "10:00" },
           status: {
             type: "string",
             enum: ["pending", "confirmed", "cancelled", "finished"],
           },
-          paymentMethod: { type: "string", enum: ["online", "onsite"] },
+          paymentMethod: { type: "string", enum: ["online", "on_site"] },
           paymentStatus: { type: "string", enum: ["unpaid", "paid"] },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
@@ -324,10 +438,10 @@ const swaggerSpec = {
         properties: {
           name: { type: "string", example: "Ahmed Ali" },
           phone: { type: "string", example: "01012345678" },
-          description: { type: "string", maxLength: 300, example: "كشف جديد" },
+          description: { type: "string", maxLength: 300, example: "First visit" },
           date: { type: "string", example: "2026-10-25" },
           startTime: { type: "string", example: "10:00" },
-          paymentMethod: { type: "string", enum: ["online", "onsite"] },
+          paymentMethod: { type: "string", enum: ["online", "on_site"] },
         },
       },
       UpdateBooking: {
@@ -343,5 +457,5 @@ const swaggerSpec = {
     },
   },
 };
- 
+
 module.exports = swaggerSpec;
