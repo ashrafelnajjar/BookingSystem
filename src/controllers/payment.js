@@ -32,7 +32,7 @@ const getByPath = (obj, path) =>
 const verifyHmac = (obj, receivedHmac) => {
   const secret = process.env.PAYMOB_HMAC_SECRET;
   if (!secret) {
-    console.error("PAYMOB_HMAC_SECRET is empty in .env");
+
     return false;
   }
 
@@ -51,14 +51,14 @@ const paymobWebhook = async (req, res) => {
   const obj = req.body?.obj;
 
   if (!obj || !verifyHmac(obj, req.query.hmac)) {
-    console.log("Webhook rejected: invalid HMAC or empty body");
+
     return res.status(401).json({ status: "fail" });
   }
 
   const ref = String(obj.order?.merchant_order_id || "");
   const match = ref.match(/^[0-9a-fA-F]{24}/);
   if (!match) {
-    console.log("Webhook: no valid booking id in merchant_order_id:", ref);
+
     return res.sendStatus(200); 
   }
   const bookingId = match[0];
@@ -117,7 +117,6 @@ const paymobWebhook = async (req, res) => {
       { _id: bookingId, status: "pending" },
       { status: "cancelled" },
     );
-    console.log("Payment failed, booking cancelled:", bookingId);
   }
   res.sendStatus(200);
 };

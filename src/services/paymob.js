@@ -41,7 +41,7 @@ const createPaymentLink = async (booking, user) => {
  
   const data = await res.json();
   if (!res.ok || !data.client_secret) {
-    console.log("Paymob error:", res.status, data);
+
     throw new AppError("Failed to start payment", 502);
   }
  
