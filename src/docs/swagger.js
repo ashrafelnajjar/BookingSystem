@@ -16,14 +16,6 @@ const idParam = {
   schema: { type: "string", example: "65f1c2a9e4b0a1d2c3e4f567" },
 };
 
-const tokenParam = {
-  name: "token",
-  in: "path",
-  required: true,
-  description: "Password reset token received by email",
-  schema: { type: "string" },
-};
-
 const secured = [{ bearerAuth: [] }];
 
 const jsonBody = (schemaRef) => ({
@@ -87,34 +79,6 @@ const swaggerSpec = {
             },
           },
           401: errorResponse("Wrong email or password"),
-        },
-      },
-    },
-
-    "/api/v1/auth/forgot-password": {
-      post: {
-        tags: ["Auth"],
-        summary: "Request a password reset email",
-        description:
-          "Sends an email containing a reset link that is valid for 10 minutes. " +
-          "The link points to `FRONTEND_URL/reset-password/:token`; the frontend then calls the reset endpoint below.",
-        requestBody: jsonBody("#/components/schemas/ForgotPassword"),
-        responses: {
-          200: { description: "Reset email sent" },
-          404: errorResponse("Email not found"),
-        },
-      },
-    },
-
-    "/api/v1/auth/reset-password/{token}": {
-      patch: {
-        tags: ["Auth"],
-        summary: "Set a new password using the emailed token",
-        parameters: [tokenParam],
-        requestBody: jsonBody("#/components/schemas/ResetPassword"),
-        responses: {
-          200: { description: "Password updated" },
-          400: errorResponse("Token is invalid or has expired"),
         },
       },
     },
@@ -316,7 +280,9 @@ const swaggerSpec = {
         requestBody: jsonBody("#/components/schemas/UpdateBooking"),
         responses: {
           200: { description: "Booking updated" },
-          400: errorResponse("Invalid data, or the booking is cancelled/finished"),
+          400: errorResponse(
+            "Invalid data, or the booking is cancelled/finished",
+          ),
           401: errorResponse("Not logged in"),
           403: errorResponse("This booking belongs to another user"),
           404: errorResponse("Booking not found"),
@@ -398,7 +364,7 @@ const swaggerSpec = {
           password: { type: "string", example: "StrongPass123" },
         },
       },
-  
+
       Booking: {
         type: "object",
         properties: {
@@ -425,7 +391,11 @@ const swaggerSpec = {
         properties: {
           name: { type: "string", example: "Ahmed Ali" },
           phone: { type: "string", example: "01012345678" },
-          description: { type: "string", maxLength: 300, example: "First visit" },
+          description: {
+            type: "string",
+            maxLength: 300,
+            example: "First visit",
+          },
           date: { type: "string", example: "2026-10-25" },
           startTime: { type: "string", example: "10:00" },
           paymentMethod: { type: "string", enum: ["online", "on_site"] },
