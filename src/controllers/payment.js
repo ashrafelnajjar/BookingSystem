@@ -1,5 +1,7 @@
 const crypto = require("crypto");
 const booking = require("../models/booking");
+const sendEmail = require("../utils/sendEmail");
+const { populate } = require("dotenv");
 
 const HMAC_FIELDS = [
   "amount_cents",
@@ -64,18 +66,38 @@ const paymobWebhook = async (req, res) => {
   if (obj.pending === true) return res.sendStatus(200);
 
   if (obj.success === true) {
-    const confirmed = await booking.findOneAndUpdate(
-      { _id: bookingId, status: "pending" },
-      {
-        status: "confirmed",
-        paymentStatus: "paid",
-        paymobOrderId: String(obj.order.id),
-      },
-      { returnDocument: "after" },
-    );
+    const confirmed = await booking
+      .findOneAndUpdate(
+        { _id: bookingId, status: "pending" },
+        {
+          status: "confirmed",
+          paymentStatus: "paid",
+          paymobOrderId: String(obj.order.id),
+        },
+        { returnDocument: "after" },
+      )
+      .populate("user", "email name");
 
     if (confirmed) {
-      console.log("Booking confirmed:", bookingId);
+      const paidAt = new Date().toLocaleString("en-GB", {
+        timeZone: "Africa/Cairo",
+      });
+      const message = `
+      <div style="direction: rtl; text-align: right; font-family: Arial;">
+        <h2>Booking confirmation/h2>
+        <p>payment received at ${paidAt}</p>
+        <p>an appointment has been booked at the doctor #### 's clinic for ${confirmed.date} at ${confirmed.startTime}</p>
+      </div>
+    `;
+      try {
+        await sendEmail({
+          email: confirmed.user.email,
+          subject: "booking confirmation",
+          html: message,
+        });
+      } catch (error) {
+        console.error("Confirmation email failed:", err.message);
+      }
     } else {
       const marked = await booking.findOneAndUpdate(
         { _id: bookingId, status: "cancelled", paymentStatus: "unpaid" },

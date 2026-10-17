@@ -2,15 +2,14 @@ const booking = require("../models/booking");
 const available = require("../models/availability");
 const AppError = require("../utils/AppError");
 const { createPaymentLink, PAYMENT_WINDOW_MS } = require("../services/paymob");
- 
-// الحجز بيعتبر "شاغل الميعاد" وهو pending (في صفحة الدفع) أو confirmed
+
 const ACTIVE = ["pending", "confirmed"];
- 
+
 const timeToMinutes = (timeStr) => {
   const [hours, minutes] = timeStr.split(":").map(Number);
   return hours * 60 + minutes;
 };
- 
+
 const minutesToTime = (totalMinutes) => {
   const hours = Math.floor(totalMinutes / 60)
     .toString()
@@ -18,8 +17,8 @@ const minutesToTime = (totalMinutes) => {
   const minutes = (totalMinutes % 60).toString().padStart(2, "0");
   return `${hours}:${minutes}`;
 };
- 
-// يلغي الحجوزات الأونلاين اللي ما اتدفعتش في المدة المحددة
+
+
 const releaseExpiredPending = () =>
   booking.updateMany(
     {
@@ -28,8 +27,33 @@ const releaseExpiredPending = () =>
     },
     { status: "cancelled" },
   );
- 
-// يتحقق من التاريخ ويوم العمل ويرجّع إعدادات العمل
+const finishPastBookings = () => {
+  const now = new Date();
+  const today = now.toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
+  const nowTime = now.toLocaleTimeString("en-GB", {
+    timeZone: "Africa/Cairo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }); 
+
+  const cutoff = timeToMinutes(nowTime) - 60;
+
+  const conditions = [{ date: { $lt: today } }]; // أي يوم فات
+  if (cutoff >= 0) {
+    conditions.push({
+      date: today,
+      startTime: { $lte: minutesToTime(cutoff) },
+    });
+  }
+
+  return booking.updateMany(
+    { status: "confirmed", $or: conditions },
+    { status: "finished" },
+  );
+};
+
+
 const getConfigForDate = async (date) => {
   const todayInCairo = new Date().toLocaleDateString("en-CA", {
     timeZone: "Africa/Cairo",
@@ -37,10 +61,10 @@ const getConfigForDate = async (date) => {
   if (date <= todayInCairo) {
     throw new AppError("Booking must be at least one day in advance", 400);
   }
- 
+
   const config = await available.findOne();
   if (!config) throw new AppError("Availability not configured", 500);
- 
+
   const dayOfWeek = new Date(date).getUTCDay();
   if (!config.workingDays.includes(dayOfWeek)) {
     throw new AppError(
@@ -50,8 +74,8 @@ const getConfigForDate = async (date) => {
   }
   return config;
 };
- 
-// يتحقق إن الوقت جوه ساعات العمل وعلى حدود الساعة
+
+
 const assertValidTime = (config, startTime) => {
   const appointment = timeToMinutes(startTime);
   const openTime = timeToMinutes(config.openTime);
@@ -67,27 +91,27 @@ const assertValidTime = (config, startTime) => {
     );
   }
 };
- 
+
 const getAvailableSlot = async (req, res) => {
   const { date } = req.query;
   const config = await getConfigForDate(date);
   await releaseExpiredPending();
- 
+
   const start = timeToMinutes(config.openTime);
   const end = timeToMinutes(config.closeTime);
- 
+
   const allSlots = [];
   for (let current = start; current + 60 <= end; current += 60) {
     allSlots.push({ startTime: minutesToTime(current) });
   }
- 
+
   const taken = await booking.find({ date, status: { $in: ACTIVE } });
   const takenTimes = taken.map((b) => b.startTime);
- 
+
   const availableSlots = allSlots.filter(
     (slot) => !takenTimes.includes(slot.startTime),
   );
- 
+
   res.status(200).json({
     status: "success",
     date,
@@ -95,22 +119,22 @@ const getAvailableSlot = async (req, res) => {
     availableSlots,
   });
 };
- 
+
 const createBooking = async (req, res) => {
   const { date, startTime, name, phone, description, paymentMethod } = req.body;
- 
+
   const config = await getConfigForDate(date);
   assertValidTime(config, startTime);
   await releaseExpiredPending();
- 
+
   const isTaken = await booking.findOne({
     date,
     startTime,
     status: { $in: ACTIVE },
   });
   if (isTaken) throw new AppError("this appointment is already booked", 409);
- 
-  // الـ unique index هو الحماية الحقيقية من الـ race condition (الـ errorHandler بيمسك 11000)
+
+
   const newBooking = await booking.create({
     user: req.user._id,
     name,
@@ -121,22 +145,22 @@ const createBooking = async (req, res) => {
     paymentMethod,
     status: paymentMethod === "onsite" ? "confirmed" : "pending",
   });
- 
+
   if (paymentMethod === "onsite") {
     return res
       .status(201)
       .json({ status: "success", data: { booking: newBooking } });
   }
- 
+
   let paymentUrl;
   try {
     paymentUrl = await createPaymentLink(newBooking, req.user);
   } catch (err) {
-    newBooking.status = "cancelled"; // الدفع ما بدأش، حرّر الميعاد
+    newBooking.status = "cancelled"; 
     await newBooking.save();
     throw err;
   }
- 
+
   res.status(201).json({
     status: "success",
     data: {
@@ -146,13 +170,13 @@ const createBooking = async (req, res) => {
     },
   });
 };
- 
+
 const updateBooking = async (req, res) => {
   const { name, phone, description, date, startTime } = req.body;
- 
+
   const book = await booking.findById(req.params.id);
   if (!book) throw new AppError("there is no booking under this id", 404);
- 
+
   if (
     req.user.role !== "admin" &&
     book.user.toString() !== req.user._id.toString()
@@ -162,19 +186,19 @@ const updateBooking = async (req, res) => {
   if (book.status === "cancelled") {
     throw new AppError("cannot update a cancelled booking", 400);
   }
- 
+
   if (book.status === "pending") {
     throw new AppError("cannot update a unpaid booking", 400);
   }
- 
+
   const newDate = date ?? book.date;
   const newStartTime = startTime ?? book.startTime;
- 
+
   if (newDate !== book.date || newStartTime !== book.startTime) {
     const config = await getConfigForDate(newDate);
     assertValidTime(config, newStartTime);
     await releaseExpiredPending();
- 
+
     const isTaken = await booking.findOne({
       _id: { $ne: book._id },
       date: newDate,
@@ -183,22 +207,30 @@ const updateBooking = async (req, res) => {
     });
     if (isTaken) throw new AppError("this appointment is already booked", 409);
   }
- 
-  const changes = { name, phone, description, date: newDate, startTime: newStartTime };
-  Object.keys(changes).forEach((k) => changes[k] === undefined && delete changes[k]);
- 
+
+  const changes = {
+    name,
+    phone,
+    description,
+    date: newDate,
+    startTime: newStartTime,
+  };
+  Object.keys(changes).forEach(
+    (k) => changes[k] === undefined && delete changes[k],
+  );
+
   const updated = await booking.findByIdAndUpdate(req.params.id, changes, {
-    returnDocument : "after",
+    returnDocument: "after",
     runValidators: true,
   });
- 
+
   res.status(200).json({ status: "success", data: { booking: updated } });
 };
- 
+
 const cancelBooking = async (req, res) => {
   const book = await booking.findById(req.params.id);
   if (!book) throw new AppError("there is no booking under this id", 404);
- 
+
   if (
     req.user.role !== "admin" &&
     book.user.toString() !== req.user._id.toString()
@@ -211,17 +243,65 @@ const cancelBooking = async (req, res) => {
   if (book.paymentStatus === "paid") {
     throw new AppError(" a paid booking can't be cancelled", 400);
   }
- 
+
   book.status = "cancelled";
   await book.save();
- 
+
   res.status(200).json({ status: "success", data: { booking: book } });
 };
- 
+const getBooking = async (req, res) => {
+  await finishPastBookings();
+
+  await releaseExpiredPending(); 
+
+  const { status, date } = req.query;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+
+  const filter = {};
+  if (req.user.role !== "admin") filter.user = req.user._id; 
+  if (status) filter.status = status;
+  if (date) filter.date = date;
+
+  const [bookings, total] = await Promise.all([
+    booking
+      .find(filter)
+      .sort({ date: -1, startTime: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    booking.countDocuments(filter),
+  ]);
+
+  res.status(200).json({
+    status: "success",
+    results: bookings.length,
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+    data: { bookings },
+  });
+};
+
+const getBookingById = async (req, res) => {
+  await finishPastBookings();
+  const book = await booking.findById(req.params.id);
+  if (!book) throw new AppError("there is no booking under this id", 404);
+
+  if (
+    req.user.role !== "admin" &&
+    book.user.toString() !== req.user._id.toString()
+  ) {
+    throw new AppError("you are not authorized to view this booking", 403);
+  }
+
+  res.status(200).json({ status: "success", data: { booking: book } });
+};
+
 module.exports = {
   getAvailableSlot,
   createBooking,
   updateBooking,
   cancelBooking,
+  getBooking,
+  getBookingById,
 };
- 

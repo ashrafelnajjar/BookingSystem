@@ -5,6 +5,8 @@ const cors = require("cors");
 const connectDB = require("./src/config/db");
 const notfound = require("./src/middlewares/notfound");
 const errorhandler = require("./src/middlewares/error");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./src/docs/swagger");
 const routerauth = require("./src/routers/auth");
 const routerbooking = require("./src/routers/booking");
 const routerpayment = require("./src/routers/paymob");
@@ -12,12 +14,13 @@ const rateLimiter = require("./src/middlewares/ratelimiter");
 
 const app = express();
 app.use(express.json());
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(
   "/api",
   rateLimiter({
     windowMs: 60 * 1000,
-    limit: 100,
+    limit: 50,
     prefix: "rl:global:",
   }),
 );

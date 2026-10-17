@@ -34,7 +34,7 @@ const bookingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["confirmed", "cancelled" , "pending"],
+      enum: ["confirmed", "cancelled" , "pending" , "finished"],
       default: "pending",
     },
     paymobOrderId :{

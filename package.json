@@ -11,6 +11,7 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
+    "seed" : " node seed.js",
     "dev": "nodemon app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -30,7 +31,8 @@
     "multer": "^2.2.0",
     "nodemailer": "^10.0.10",
     "rate-limit-redis": "^6.0.1",
-    "redis": "^6.3.0"
+    "redis": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
