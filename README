@@ -1,0 +1,133 @@
+# Booking System API
+
+A REST API for booking doctor/clinic appointments. Users reserve hourly slots and either **pay online (Paymob)** or **pay at the clinic**. Built with Node.js, Express and MongoDB.
+
+- **Live API:** https://bookingsystem-production-43df.up.railway.app
+- **Interactive docs (Swagger):** https://bookingsystem-production-43df.up.railway.app/api-docs
+
+## Features
+
+- **Hourly appointment slots** within configurable working hours and working days
+- **Double-booking protection**: a partial unique index in MongoDB guarantees one active booking per slot, even under concurrent requests (race conditions)
+- **Two payment options**
+  - _On site_: the booking is confirmed immediately
+  - _Online_: the booking is held as `pending` and a Paymob checkout link valid for **10 minutes** is returned
+- **Automatic slot release**: unpaid `pending` bookings expire after 10 minutes and the slot becomes available again
+- **Secure Paymob webhook**: every callback is verified with an HMAC-SHA512 signature before a booking is confirmed
+- **Booking lifecycle**: `pending` → `confirmed` → `finished` (or `cancelled`)
+- **JWT authentication** with role-based access (users see their own bookings, admins see all)
+- **Request validation** with Joi
+- **Rate limiting** backed by Redis
+- **Confirmation email** after a successful payment
+- **Swagger documentation** at `/api-docs`
+
+## Tech Stack
+
+Node.js · Express · MongoDB (Mongoose) · Redis (ioredis) · JWT · Joi · Paymob · Nodemailer · Swagger UI
+
+## How It Works
+
+**Booking flow**
+
+1. The client asks for free slots: `GET /api/v1/bookings/available-slots?date=YYYY-MM-DD`
+2. The client creates a booking with `paymentMethod: "on_site"` or `"online"`
+3. `on_site` → status `confirmed`. `online` → status `pending` + a `paymentUrl` is returned
+4. After payment, Paymob calls the webhook. The signature is verified, then the booking becomes `confirmed` / `paid`
+5. If the payment is not completed within 10 minutes, the booking is cancelled and the slot is freed
+6. Once the appointment hour has passed, confirmed bookings become `finished`
+
+**Rules**
+
+- Bookings must be at least one day in advance
+- Slots are one hour long and must fall inside the configured working hours
+- A paid booking cannot be cancelled through the API
+
+## API Endpoints
+
+Full interactive documentation is available at `/api-docs`.
+
+| Method | Endpoint                                | Auth | Description                                                                               |
+| ------ | --------------------------------------- | ---- | ----------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/booking/available-slots?date=` | No   | Free slots for a date                                                                     |
+| GET    | `/api/v1/booking`                       | Yes  | List bookings (own for users, all for admins). Supports `status`, `date`, `page`, `limit` |
+| GET    | `/api/v1/booking/:id`                   | Yes  | Get a single booking                                                                      |
+| POST   | `/api/v1/booking`                       | Yes  | Create a booking                                                                          |
+| PATCH  | `/api/v1/booking/:id`                   | Yes  | Update a booking                                                                          |
+| PATCH  | `/api/v1/booking/:id/cancel`            | Yes  | Cancel a booking                                                                          |
+| POST   | `/api/v1/payment/webhook`               | HMAC | Paymob callback (called by Paymob only)                                                   |
+
+> Authentication endpoints (sign up / log in) are listed in the Swagger docs.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- A MongoDB database (e.g. MongoDB Atlas free tier)
+- A Redis instance (e.g. Redis Cloud free tier)
+- A Paymob account in **test mode** (for online payments)
+
+### Installation
+
+```bash
+git clone https://github.com/ashrafelnajjar/BookingSystem.git
+cd BookingSystem
+npm install
+```
+
+Create your environment file and fill in the values (see the table below):
+
+```bash
+cp .env.example .env        # Windows PowerShell: copy .env.example .env
+```
+
+### Seed the working hours
+
+The API needs one document describing the working hours. This command creates it (it is safe to run more than once):
+
+```bash
+npm run seed
+```
+
+By default: open 09:00, close 19:00, Sunday to Thursday.
+
+### Run
+
+```bash
+npm start
+```
+
+The API runs on `https://bookingsystem-production-43df.up.railway.app` and the docs on `https://bookingsystem-production-43df.up.railway.app/api-docs`.
+
+### Testing online payments locally
+
+Paymob must be able to reach your webhook, so expose your local server with a tunnel such as [ngrok](https://ngrok.com), then:
+
+1. Set `APP_URL` to the public tunnel URL
+2. In the Paymob dashboard, set the transaction processed callback to `<APP_URL>/api/v1/payments/webhook`
+3. Pay with one of Paymob's test cards (see the Paymob documentation for test credentials)
+
+## Environment Variables
+
+| Variable                        | Description                                         |
+| ------------------------------- | --------------------------------------------------- |
+| `PORT`                          | Port to listen on (set automatically on most hosts) |
+| `APP_URL`                       | Public URL of the API, used in Paymob callbacks     |
+| `DB_URL`                        | MongoDB connection string                           |
+| `REDIS_URL`                     | Redis connection URL                                |
+| `JWT_SECRET`                    | Secret used to sign tokens                          |
+| `JWT_EXPIRES_IN`                | Token lifetime, e.g. `7d`                           |
+| `BOOKING_PRICE_EGP`             | Price of one booking in EGP                         |
+| `PAYMOB_SECRET_KEY`             | Paymob secret key (creates payment intentions)      |
+| `PAYMOB_PUBLIC_KEY`             | Paymob public key (checkout link)                   |
+| `PAYMOB_INTEGRATION_ID`         | Paymob card integration id                          |
+| `PAYMOB_HMAC_SECRET`            | Paymob HMAC secret (webhook verification)           |
+| `EMAIL_USER` / `EMAIL_PASSWORD` | SMTP account used for confirmation emails           |
+
+## Deployment
+
+The API is deployed on [Railway](https://railway.app). Set the variables above in the service settings, point `APP_URL` to the generated domain, and update the Paymob callback URL to `<APP_URL>/api/v1/payments/webhook`.
+
+## Author
+
+**Ashraf El-Najjar** · [GitHub](https://github.com/ashrafelnajjar)

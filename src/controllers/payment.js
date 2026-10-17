@@ -59,7 +59,7 @@ const paymobWebhook = async (req, res) => {
   const match = ref.match(/^[0-9a-fA-F]{24}/);
   if (!match) {
     console.log("Webhook: no valid booking id in merchant_order_id:", ref);
-    return res.sendStatus(200); // 200 عشان Paymob ما تعيدش الإرسال
+    return res.sendStatus(200); 
   }
   const bookingId = match[0];
 
