@@ -398,20 +398,7 @@ const swaggerSpec = {
           password: { type: "string", example: "StrongPass123" },
         },
       },
-      ForgotPassword: {
-        type: "object",
-        required: ["email"],
-        properties: {
-          email: { type: "string", example: "ahmed@example.com" },
-        },
-      },
-      ResetPassword: {
-        type: "object",
-        required: ["password"],
-        properties: {
-          password: { type: "string", example: "NewStrongPass123" },
-        },
-      },
+  
       Booking: {
         type: "object",
         properties: {

@@ -1,6 +1,6 @@
 # Booking System API
 
-A REST API for booking doctor/clinic appointments. Users reserve hourly slots and either **pay online (Paymob)** or **pay at the clinic**. Built with Node.js, Express and MongoDB.
+A booking-focused REST API for scheduling hourly appointments, with online payments (Paymob) or pay-on-site.. Built with Node.js, Express and MongoDB.
 
 - **Live API:** https://bookingsystem-production-43df.up.railway.app
 - **Interactive docs (Swagger):** https://bookingsystem-production-43df.up.railway.app/api-docs
