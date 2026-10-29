@@ -1,24 +1,54 @@
-const nodemailer = require("nodemailer");
-require('dotenv').config();
-const sendEmail = async (options) => {
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
+const nodemailer = require("nodemailer");
+
+const sendViaBrevo = async ({ to, subject, html }) => {
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+      accept: "application/json",
     },
+    body: JSON.stringify({
+      sender: { name: "Auth System", email: process.env.EMAIL_USER },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
   });
 
-  const mailOptions = {
-    from: `my clinic <${process.env.EMAIL_USER}>`,
-    to: options.email,
-    subject: options.subject,
-    html: options.html,
-  };
+  if (!res.ok) {
+    throw new Error(`Brevo error ${res.status}: ${await res.text()}`);
+  }
+};
 
+// One transporter for the whole app (reuses the connection)
+let transporter;
+const getTransporter = () => {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+  }
+  return transporter;
+};
 
-  await transporter.sendMail(mailOptions);
+const sendViaGmail = async ({ to, subject, html }) => {
+  await getTransporter().sendMail({
+    from: `"Auth System" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
+};
+
+const sendEmail = async (options) => {
+  if (process.env.BREVO_API_KEY) return sendViaBrevo(options);
+  return sendViaGmail(options);
 };
 
 module.exports = sendEmail;
