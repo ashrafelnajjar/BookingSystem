@@ -32,7 +32,6 @@ const getByPath = (obj, path) =>
 const verifyHmac = (obj, receivedHmac) => {
   const secret = process.env.PAYMOB_HMAC_SECRET;
   if (!secret) {
-
     return false;
   }
 
@@ -51,15 +50,13 @@ const paymobWebhook = async (req, res) => {
   const obj = req.body?.obj;
 
   if (!obj || !verifyHmac(obj, req.query.hmac)) {
-
     return res.status(401).json({ status: "fail" });
   }
 
   const ref = String(obj.order?.merchant_order_id || "");
   const match = ref.match(/^[0-9a-fA-F]{24}/);
   if (!match) {
-
-    return res.sendStatus(200); 
+    return res.sendStatus(200);
   }
   const bookingId = match[0];
 
@@ -95,7 +92,7 @@ const paymobWebhook = async (req, res) => {
           subject: "booking confirmation",
           html: message,
         });
-      } catch(err) {
+      } catch (err) {
         console.error("Confirmation email failed:", err.message);
       }
     } else {
