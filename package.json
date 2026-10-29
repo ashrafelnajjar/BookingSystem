@@ -6,7 +6,7 @@
     "iti"
   ],
   "license": "ISC",
-  "author": "hesham",
+  "author": "ashraf",
   "type": "commonjs",
   "main": "app.js",
   "scripts": {
