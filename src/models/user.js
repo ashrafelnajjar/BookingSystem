@@ -4,20 +4,32 @@ const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
-    user: { type: String, required: true, minlength: 3 },
-    password: { type: String, required: true, minlength: 6, maxlength: 50 },
+    name: {
+      type: String,
+      required: [true, "name is required"],
+      trim: true,
+      minlength: 2,
+      maxlength: 50,
+    },
     email: {
       type: String,
-      required: true,
-      validate: /\S+@\S+\.\S+/,
+      required: [true, "email is required"],
       unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    password: {
+      type: String,
+      required: [true, "password is required"],
+      minlength: 8,
+      select: false,            
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
     },
 
-    roles: {
-      type: String,
-      enum: ["Costumer", "Admin"],
-      default: "Costumer",
-    },
   },
   {
     timestamps: true,
@@ -38,7 +50,6 @@ userSchema.pre("save", async function () {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
 });
-
 
 const user = mongoose.model("user", userSchema);
 module.exports = user;
