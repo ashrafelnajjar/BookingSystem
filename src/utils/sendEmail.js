@@ -10,7 +10,7 @@ const sendViaBrevo = async ({ to, subject, html }) => {
       accept: "application/json",
     },
     body: JSON.stringify({
-      sender: { name: "Auth System", email: process.env.EMAIL_USER },
+      sender: { name: "booking", email: process.env.EMAIL_USER },
       to: [{ email: to }],
       subject,
       htmlContent: html,
@@ -39,7 +39,7 @@ const getTransporter = () => {
 
 const sendViaGmail = async ({ to, subject, html }) => {
   await getTransporter().sendMail({
-    from: `"Auth System" <${process.env.EMAIL_USER}>`,
+    from: `"booking" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,

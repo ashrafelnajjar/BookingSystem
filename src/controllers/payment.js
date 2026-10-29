@@ -84,7 +84,7 @@ const paymobWebhook = async (req, res) => {
       });
       const message = `
       <div style="direction: rtl; text-align: right; font-family: Arial;">
-        <h2>Booking confirmation/h2>
+        <h2>Booking confirmation</h2>
         <p>payment received at ${paidAt}</p>
         <p>an appointment has been booked at the doctor #### 's clinic for ${confirmed.date} at ${confirmed.startTime}</p>
       </div>
