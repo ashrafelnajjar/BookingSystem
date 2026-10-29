@@ -12,7 +12,7 @@ const sendEmail = async (options) => {
 
   const mailOptions = {
     from: `my clinic <${process.env.EMAIL_USER}>`,
-    email: options.email,
+    to: options.email,
     subject: options.subject,
     html: options.html,
   };
