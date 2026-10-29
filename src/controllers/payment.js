@@ -95,7 +95,7 @@ const paymobWebhook = async (req, res) => {
           subject: "booking confirmation",
           html: message,
         });
-      } catch (error) {
+      } catch(err) {
         console.error("Confirmation email failed:", err.message);
       }
     } else {
