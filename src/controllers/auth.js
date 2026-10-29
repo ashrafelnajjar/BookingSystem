@@ -28,68 +28,8 @@ const login = async (req, res, next) => {
   res.status(200).json({ message: "success", token, user });
 };
 
-const forgotPassword = async (req, res) => {
-  const body = req.body;
-  const user = await User.findOne({ email: body.email });
-  if (!user) throw new AppError("email is not found", 404);
-  const resetToken = user.createPasswordResetToken();
-  await user.save({ validateBeforeSave: false });
-  const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-  const message = `
-      <div style="direction: rtl; text-align: right; font-family: Arial;">
-        <h2>طلب إعادة تعيين كلمة السر</h2>
-        <p>لقد تلقينا طلباً لإعادة تعيين كلمة السر الخاصة بحسابك.</p>
-        <p>يرجى الضغط على الرابط التالي لتحديد كلمة سر جديدة (الرابط صالح لمدة 10 دقائق فقط):</p>
-        <a href="${resetURL}" style="display: inline-block; padding: 10px 20px; background-color: #3498db; color: white; text-decoration: none; border-radius: 5px;">إعادة تعيين كلمة السر</a>
-        <p>إذا لم تطلب هذا التغيير، يمكنك تجاهل هذا الإيميل وسيظل حسابك آمناً.</p>
-      </div>
-    `;
-  try {
-    await sendEmail({
-      email: user.email,
-      subject: " reset passwword",
-      html: message,
-    });
-    res.status(200).json({
-      status: "success",
-      message: " password reset link has been sent to your email",
-    });
-  } catch (err) {
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-    await user.save({ validateBeforeSave: false });
-
-    return res.status(500).json({
-      status: "fail",
-      message: "حدث خطأ أثناء إرسال البريد الإلكتروني، حاول مرة أخرى لاحقاً",
-    });
-  }
-};
-const resetPassword = async (res, req) => {
-  const hashedtoken = crypto
-    .createHash("sha256")
-    .update(req.params.token)
-    .digest("hex");
-  const user = await User.findOne({
-    passwordResetToken: hashedtoken,
-    passwordResetToken: { $gt: Date.now() },
-  });
-  if (!user) throw new AppError("link is invalid or expired!", 400);
-
-  const salt = await bcrypt.genSalt(10);
-  user.password = await bcrypt.hash(req.body.passsword, salt);
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
-  await user.save();
-  res.status(200).json({
-    status: "success",
-    message: "تم تغيير كلمة السر بنجاح، يمكنك الآن تسجيل الدخول",
-  });
-};
 
 module.exports = {
   login,
   signup,
-  forgotPassword,
-  resetPassword,
 };

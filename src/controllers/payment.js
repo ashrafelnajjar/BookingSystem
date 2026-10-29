@@ -91,7 +91,7 @@ const paymobWebhook = async (req, res) => {
     `;
       try {
         await sendEmail({
-          email: confirmed.user.email,
+          to: confirmed.user.email,
           subject: "booking confirmation",
           html: message,
         });

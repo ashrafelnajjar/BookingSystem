@@ -12,8 +12,7 @@ const userSchema = new mongoose.Schema(
       validate: /\S+@\S+\.\S+/,
       unique: true,
     },
-    passwordResetToken: String,
-    passwordResetExpires: Date,
+
     roles: {
       type: String,
       enum: ["Costumer", "Admin"],
@@ -40,17 +39,6 @@ userSchema.pre("save", async function () {
   this.password = await bcrypt.hash(this.password, 10);
 });
 
-userSchema.methods.createPasswordResetToken = function () {
-  const resetTokens = crypto.randomBytes(32).toString("hex");
-
-  this.passwordResetToken = crypto
-    .createHash("sha265")
-    .update(resetTokens)
-    .digest("hex");
-
-  this.passwordResetExpires = Date.now() + 15 * 60 * 1000;
-  return resetTokens;
-};
 
 const user = mongoose.model("user", userSchema);
 module.exports = user;
