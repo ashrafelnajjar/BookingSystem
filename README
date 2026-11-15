@@ -2,8 +2,8 @@
 
 A booking-focused REST API for scheduling hourly appointments, with online payments (Paymob) or pay-on-site.. Built with Node.js, Express and MongoDB.
 
-- **Live API:** https://bookingsystem-production-43df.up.railway.app
-- **Interactive docs (Swagger):** https://bookingsystem-production-43df.up.railway.app/api-docs
+- **Live API:** https://auth-system-rouge-seven.vercel.app
+- **Interactive docs (Swagger):** https://auth-system-rouge-seven.vercel.app/api-docs
 
 ## Features
 
@@ -97,7 +97,7 @@ By default: open 09:00, close 19:00, Sunday to Thursday.
 npm start
 ```
 
-The API runs on `https://bookingsystem-production-43df.up.railway.app` and the docs on `https://bookingsystem-production-43df.up.railway.app/api-docs`.
+The API runs on `https://auth-system-rouge-seven.vercel.app` and the docs on `https://auth-system-rouge-seven.vercel.app/api-docs`.
 
 ### Testing online payments locally
 
@@ -126,7 +126,7 @@ Paymob must be able to reach your webhook, so expose your local server with a tu
 
 ## Deployment
 
-The API is deployed on [Railway](https://railway.app). Set the variables above in the service settings, point `APP_URL` to the generated domain, and update the Paymob callback URL to `<APP_URL>/api/v1/payments/webhook`.
+The API is deployed on [vercel](https://vercel.app). Set the variables above in the service settings, point `APP_URL` to the generated domain, and update the Paymob callback URL to `<APP_URL>/api/v1/payments/webhook`.
 
 ## Author
 

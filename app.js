@@ -52,7 +52,7 @@ app.get("/payment-result", (req, res) => {
     .type("html")
     .send(
       `<meta charset="utf-8"><h2>${
-        ok ? "تم الدفع بنجاح ✅" : "الدفع ماتمش ❌"
+        ok ? "✅payment successful" : "❌payment failed"
       }</h2>`,
     );
 });

@@ -13,7 +13,7 @@ const rateLimiter = ({
     limit,
     standardHeaders: "draft-7",
     legacyHeaders: false,
-    message: { message: "Too many requests, حاول تاني بعد شوية" },
+    message: { message: "Too many requests, try again in a little while" },
     passOnStoreError: true,
     store: new RedisStore({
       sendCommand: (...args) => redis.call(...args),
