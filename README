@@ -2,8 +2,8 @@
 
 A booking-focused REST API for scheduling hourly appointments, with online payments (Paymob) or pay-on-site.. Built with Node.js, Express and MongoDB.
 
-- **Live API:** https://auth-system-rouge-seven.vercel.app
-- **Interactive docs (Swagger):** https://auth-system-rouge-seven.vercel.app/api-docs
+- **Live API:** https://booking-system-chi-six.vercel.app
+- **Interactive docs (Swagger):** https://booking-system-chi-six.vercel.app/api-docs
 
 ## Features
 
@@ -97,7 +97,7 @@ By default: open 09:00, close 19:00, Sunday to Thursday.
 npm start
 ```
 
-The API runs on `https://auth-system-rouge-seven.vercel.app` and the docs on `https://auth-system-rouge-seven.vercel.app/api-docs`.
+The API runs on `https://booking-system-chi-six.vercel.app` and the docs on `https://booking-system-chi-six.vercel.app/api-docs`.
 
 ### Testing online payments locally
 
